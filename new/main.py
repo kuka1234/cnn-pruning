@@ -1,15 +1,7 @@
 import os
 import argparse
-import shutil
-import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 from torchvision import datasets, transforms
-from torch.autograd import Variable
-from collections import defaultdict
-import matplotlib.pyplot as plt
 
 # Default cifar-10 from old code.
 def get_cifar10(train_batch_size, test_batch_size, kwargs):
