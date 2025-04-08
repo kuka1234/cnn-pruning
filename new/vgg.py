@@ -11,9 +11,10 @@ defaultcfg = {
 }
 
 class vgg(nn.Module):
-    def __init__(self, dataset='cifar10', depth=16, init_weights=True):
+    def __init__(self, dataset='cifar10', depth=16, init_weights=True, cfg=None):
         super(vgg, self).__init__()
-        cfg = defaultcfg[depth]
+        if cfg is None:
+            cfg = defaultcfg[depth]
         self.feature = self.make_layers(cfg, True)
         if dataset == 'cifar10':
             num_classes = 10
