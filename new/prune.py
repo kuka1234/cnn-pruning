@@ -12,20 +12,24 @@ import l1_norm_prune
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='PyTorch Slimming CIFAR prune')
-    parser.add_argument('pruning-method', type=str, required=True,
+    parser.add_argument('pruning_method', type=str,
                         help='Pruning method to use (e.g., l1_norm, network_slimming)')
+    parser.add_argument('weights_init_method', type=str,
+                    help='Weights initialisation method in the pruned model (default: unpruned model weights)', default='unpruned')
     parser.add_argument('--dataset', type=str, default='cifar10',
                         help='training dataset (default: cifar10)')
     parser.add_argument('--test-batch-size', type=int, default=256, metavar='N',
                         help='input batch size for testing (default: 256)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
-    parser.add_argument('--depth', type=int, default=19,
+    parser.add_argument('--depth', type=int, default=16,
                         help='depth of the vgg')
     parser.add_argument('--percent', type=float, default=0.5,
                         help='scale sparse rate (default: 0.5)')
     parser.add_argument('--model', default='', type=str, metavar='PATH',
                         help='path to the model (default: none)')
+    parser.add_argument('--initial_model', default='', type=str, metavar='PATH',
+                    help='path to the initial model (default: none)')
     parser.add_argument('--save', default='', type=str, metavar='PATH',
                         help='path to save pruned model (default: none)')
 
@@ -35,23 +39,23 @@ def parse_args():
     return args
 
 
-def load_model(args):
+def load_model(args, model_path):
     """Load model and checkpoint if provided"""
     model = vgg(dataset=args.dataset, depth=args.depth)
     if args.cuda:
         model.cuda()
 
-    if args.model:
-        if os.path.isfile(args.model):
-            print("=> loading checkpoint '{}'".format(args.model))
-            checkpoint = torch.load(args.model)
+    if model_path:
+        if os.path.isfile(model_path):
+            print("=> loading checkpoint '{}'".format(model_path))
+            checkpoint = torch.load(model_path)
             args.start_epoch = checkpoint['epoch']
             best_prec1 = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
             print("=> loaded checkpoint '{}' (epoch {}) Prec1: {:f}"
-                  .format(args.model, checkpoint['epoch'], best_prec1))
+                  .format(model_path, checkpoint['epoch'], best_prec1))
         else:
-            print("=> no checkpoint found at '{}'".format(args.model))
+            raise Warning("=> no checkpoint found at '{}'".format(model_path))
 
     return model
 
@@ -100,17 +104,19 @@ def test(model, args):
 
 def save_pruned_model(newmodel, cfg, args, accuracy):
     """Save the pruned model and configuration"""
+    model_file_name = os.path.basename(args.model)
+
     # Create directory if it doesn't exist
     if not os.path.exists(args.save):
         os.makedirs(args.save)
 
     # Save model state
     torch.save({'cfg': cfg, 'state_dict': newmodel.state_dict()},
-               os.path.join(args.save, 'pruned.pth.tar'))
+               os.path.join(args.save, f'{model_file_name}_pruned_{args.pruning_method}_{args.weights_init_method}.pth.tar'))
 
     # Save pruning info
     num_parameters = sum([param.nelement() for param in newmodel.parameters()])
-    savepath = os.path.join(args.save, "prune.txt")
+    savepath = os.path.join(args.save, f"{model_file_name}_pruned_{args.pruning_method}_{args.weights_init_method}.txt")
     with open(savepath, "w") as fp:
         fp.write("Configuration: \n" + str(cfg) + "\n")
         fp.write("Number of parameters: \n" + str(num_parameters) + "\n")
@@ -126,14 +132,14 @@ def main():
     args = parse_args()
 
     # Load model
-    model = load_model(args)
-    print(model)
-
+    model = load_model(args, args.model)
 
     if args.pruning_method == 'l1_norm':
         cfg, cfg_mask = l1_norm_prune.prune(model, args)
     elif args.pruning_method == 'network_slimming':
         cfg, cfg_mask = network_slimming_prune.prune(model, args)
+    else:
+        raise Warning("No valid pruning method is given.")
 
     # Test the model after simple pruning (zeroing out weights)
     accuracy = test(model, args)
@@ -146,9 +152,21 @@ def main():
 
     # Copy weights from original model to new model
     if args.pruning_method == 'l1_norm':
-        new_model = l1_norm_prune.match_new_model(model, new_model, cfg_mask)
+        if args.weights_init_method == 'unpruned':
+            new_model = l1_norm_prune.match_model_weights(model, new_model, cfg_mask)
+        elif args.weights_init_method == 'random':
+            new_model = l1_norm_prune.match_model_weights(model, new_model, cfg_mask, weight_model=vgg(dataset=args.dataset, depth=args.depth))
+        elif args.weights_init_method == 'initial':
+            new_model = l1_norm_prune.match_model_weights(model, new_model, cfg_mask, weight_model=load_model(args, args.initial_model))
+        else: raise Warning("No valid weight initialisation method is given.")
     elif args.pruning_method == 'network_slimming':
-        new_model = network_slimming_prune.match_new_model(model, new_model, cfg_mask)
+        if args.weights_init_method == 'unpruned':
+            new_model = network_slimming_prune.match_model_weights(model, new_model, cfg_mask)
+        elif args.weights_init_method == 'random':
+            new_model = network_slimming_prune.match_model_weights(model, new_model, cfg_mask, weight_model=vgg(dataset=args.dataset, depth=args.depth))
+        elif args.weights_init_method == 'initial':
+            new_model = network_slimming_prune.match_model_weights(model, new_model, cfg_mask, weight_model=load_model(args, args.initial_model))
+        else: raise Warning("No valid weight initialisation method is given.")
 
     # Save the pruned model
     save_pruned_model(new_model, cfg, args, accuracy)
@@ -156,7 +174,7 @@ def main():
     # Test the final pruned model
     print("Testing final pruned model:")
     print(new_model)
-    test(new_model, args)
+    test(new_model.cuda(), args)
 
 
 if __name__ == '__main__':

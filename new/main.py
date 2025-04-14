@@ -4,7 +4,7 @@ import random
 import torch
 from torchvision import datasets, transforms
 import shutil
-import vgg
+from vgg import vgg
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
@@ -43,11 +43,13 @@ def get_cifar10(train_batch_size, test_batch_size, kwargs):
 def main():
     # Training Settings
     parser = argparse.ArgumentParser(description='PyTorch Slimming CIFAR training')
-    parser.add_argument('run_name', type=str, help='Name of the log run', required=True)
+    parser.add_argument('run_name', type=str, help='Name of the log run')
     parser.add_argument('--sparsity-regularization', '-sr', dest='sr', action='store_true',
                         help='train with channel sparsity regularization')
     parser.add_argument('--s', type=float, default=0.0001,
                         help='scale sparse rate (default: 0.0001)')
+    parser.add_argument('--dataset', type=str, default='cifar10',
+                        help='training dataset (default: cifar10)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',
@@ -62,7 +64,7 @@ def main():
                         metavar='W', help='weight decay (default: 1e-4)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
-    parser.add_argument('--fine-tuning',default='', type=str, metavar='PATH',
+    parser.add_argument('--fine_tuning',default='', type=str, metavar='PATH',
                         help='path to the pruned model to be fine tuned')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
@@ -75,7 +77,7 @@ def main():
 
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
-
+    
     torch.manual_seed(args.seed)
     if args.cuda:
         torch.cuda.manual_seed(args.seed)
@@ -98,18 +100,18 @@ def main():
 
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
-            checkpoint = torch.load(args.resume)
-            args.start_epoch = checkpoint['epoch']
-            best_prec1 = checkpoint['best_prec1']
-            model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            print("=> loaded checkpoint '{}' (epoch {}) Prec1: {:f}"
-                .format(args.resume, checkpoint['epoch'], best_prec1))
-        else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
+    # if args.resume:
+    #     if os.path.isfile(args.resume):
+    #         print("=> loading checkpoint '{}'".format(args.resume))
+    #         checkpoint = torch.load(args.resume)
+    #         args.start_epoch = checkpoint['epoch']
+    #         best_prec1 = checkpoint['best_prec1']
+    #         model.load_state_dict(checkpoint['state_dict'])
+    #         optimizer.load_state_dict(checkpoint['optimizer'])
+    #         print("=> loaded checkpoint '{}' (epoch {}) Prec1: {:f}"
+    #             .format(args.resume, checkpoint['epoch'], best_prec1))
+    #     else:
+    #         print("=> no checkpoint found at '{}'".format(args.resume))
 
     def updateBN():
         for m in model.modules():
@@ -127,7 +129,7 @@ def main():
             optimizer.zero_grad()
             output = model(data)
             loss = F.cross_entropy(output, target)
-            avg_loss += loss.data[0]
+            avg_loss += loss.data.item()
             pred = output.data.max(1, keepdim=True)[1]
             train_acc += pred.eq(target.data.view_as(pred)).cpu().sum()
             loss.backward()
@@ -137,7 +139,7 @@ def main():
             if batch_idx % args.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.1f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss.data[0]))
+                    100. * batch_idx / len(train_loader), loss.data.item()))
 
         wandb.log({
             "training_loss": avg_loss,
@@ -156,7 +158,7 @@ def main():
                 data, target = data.cuda(), target.cuda()
             data, target = Variable(data, volatile=True), Variable(target)
             output = model(data)
-            test_loss += F.cross_entropy(output, target, size_average=False).data[0] # sum up batch loss
+            test_loss += F.cross_entropy(output, target, size_average=False).data.item() # sum up batch loss
             pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
@@ -175,12 +177,12 @@ def main():
 
         return correct / float(len(test_loader.dataset))
 
-    def save_checkpoint(state, is_best, filepath):
-        torch.save(state, os.path.join(filepath, 'checkpoint.pth.tar'))
+    def save_checkpoint(state, is_best, filename, filepath=args.save):
+        torch.save(state, os.path.join(filepath, f'{filename}.pth.tar'))
         if is_best:
-            shutil.copyfile(os.path.join(filepath, 'checkpoint.pth.tar'), os.path.join(filepath, 'model_best.pth.tar'))
+            shutil.copyfile(os.path.join(filepath, f'{filename}.pth.tar'), os.path.join(filepath, f'{filename}_best.pth.tar'))
 
-    args.run_name = args.run_name + random.getrandbits(16)  # Add random bits to the run name to avoid overwriting
+    args.run_name = args.run_name + str(random.getrandbits(16))  # Add random bits to the run name to avoid overwriting
     with wandb.init(
         project="network_pruning", 
         name=args.run_name, 
@@ -190,8 +192,16 @@ def main():
         dir="./wandb_logs"
     ):
         wandb.watch(model, log="all", log_freq = 100)
+        save_checkpoint({
+            'epoch': 0,
+            'state_dict': model.state_dict(),
+            'best_prec1': 0,
+            'optimizer': optimizer.state_dict(),
+            'cfg': model.cfg
+        }, False, filename=args.run_name+"_initial_model")
+
         best_prec1 = 0.
-        for epoch in range(args.start_epoch, args.epochs):
+        for epoch in range(1, args.epochs):
             if epoch in [args.epochs*0.5, args.epochs*0.75]:
                 for param_group in optimizer.param_groups:
                     param_group['lr'] *= 0.1
@@ -205,7 +215,7 @@ def main():
                 'best_prec1': best_prec1,
                 'optimizer': optimizer.state_dict(),
                 'cfg': model.cfg
-            }, is_best, filepath=args.run_name)
+            }, is_best, filename=args.run_name)
 
 if __name__=='__main__':
     main()

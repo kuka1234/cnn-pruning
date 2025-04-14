@@ -59,21 +59,24 @@ def prune(model, args):
     return cfg, cfg_mask
 
 
-def match_model_weights(model, newmodel, cfg_mask):
-    """Create a new model with the pruned architecture"""
+def match_model_weights(model, newmodel, cfg_mask, weight_model=None):
     layer_id_in_cfg = 0
     start_mask = torch.ones(3)
     end_mask = cfg_mask[layer_id_in_cfg]
 
-    for [m0, m1] in zip(model.modules(), newmodel.modules()):
+    if weight_model is None:
+        weight_model = model
+
+    for [m0, m1, m_weight] in zip(model.modules(), newmodel.modules(), weight_model.modules()):
         if isinstance(m0, nn.BatchNorm2d):
             idx1 = np.squeeze(np.argwhere(np.asarray(end_mask.cpu().numpy())))
             if idx1.size == 1:
                 idx1 = np.resize(idx1, (1,))
-            m1.weight.data = m0.weight.data[idx1.tolist()].clone()
-            m1.bias.data = m0.bias.data[idx1.tolist()].clone()
-            m1.running_mean = m0.running_mean[idx1.tolist()].clone()
-            m1.running_var = m0.running_var[idx1.tolist()].clone()
+            # Use weights from weight_model instead of model
+            m1.weight.data = m_weight.weight.data[idx1.tolist()].clone()
+            m1.bias.data = m_weight.bias.data[idx1.tolist()].clone()
+            m1.running_mean = m_weight.running_mean[idx1.tolist()].clone()
+            m1.running_var = m_weight.running_var[idx1.tolist()].clone()
             layer_id_in_cfg += 1
             start_mask = end_mask.clone()
             if layer_id_in_cfg < len(cfg_mask):  # do not change in Final FC
@@ -86,14 +89,16 @@ def match_model_weights(model, newmodel, cfg_mask):
                 idx0 = np.resize(idx0, (1,))
             if idx1.size == 1:
                 idx1 = np.resize(idx1, (1,))
-            w1 = m0.weight.data[:, idx0.tolist(), :, :].clone()
+            # Use weights from weight_model instead of model
+            w1 = m_weight.weight.data[:, idx0.tolist(), :, :].clone()
             w1 = w1[idx1.tolist(), :, :, :].clone()
             m1.weight.data = w1.clone()
         elif isinstance(m0, nn.Linear):
             idx0 = np.squeeze(np.argwhere(np.asarray(start_mask.cpu().numpy())))
             if idx0.size == 1:
                 idx0 = np.resize(idx0, (1,))
-            m1.weight.data = m0.weight.data[:, idx0].clone()
-            m1.bias.data = m0.bias.data.clone()
-
+            # Use weights from weight_model instead of model
+            m1.weight.data = m_weight.weight.data[:, idx0].clone()
+            m1.bias.data = m_weight.bias.data.clone()
+    
     return newmodel
