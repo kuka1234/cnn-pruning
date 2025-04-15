@@ -1,0 +1,4 @@
+data.cifar10
+model_weights
+wandb_logs
+new/__pycache__/
