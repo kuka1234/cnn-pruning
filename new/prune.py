@@ -104,7 +104,7 @@ def test(model, args):
 
 def save_pruned_model(newmodel, cfg, args, accuracy):
     """Save the pruned model and configuration"""
-    model_file_name = os.path.basename(args.model)
+    model_file_name = os.path.splitext(os.path.basename(args.model))[0]
 
     # Create directory if it doesn't exist
     if not os.path.exists(args.save):

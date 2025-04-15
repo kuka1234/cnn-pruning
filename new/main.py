@@ -182,7 +182,8 @@ def main():
         if is_best:
             shutil.copyfile(os.path.join(filepath, f'{filename}.pth.tar'), os.path.join(filepath, f'{filename}_best.pth.tar'))
 
-    args.run_name = args.run_name + str(random.getrandbits(16))  # Add random bits to the run name to avoid overwriting
+    # args.run_name = args.run_name + str(random.getrandbits(16))  # Add random bits to the run name to avoid overwriting
+    args.run_name = args.run_name
     with wandb.init(
         project="network_pruning", 
         name=args.run_name, 
