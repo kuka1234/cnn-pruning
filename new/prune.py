@@ -41,7 +41,7 @@ def parse_args():
 
 def load_model(args, model_path):
     """Load model and checkpoint if provided"""
-    model = vgg(dataset=args.dataset, depth=args.depth)
+    model = vgg(dataset=args.dataset, depth=args.depth) if args.pruning_method=="l1_norm" else vgg(dataset=args.dataset, depth=args.depth, simple_classifier=True)
     if args.cuda:
         model.cuda()
 
@@ -146,7 +146,7 @@ def main():
 
     # Create a new model with the pruned architecture
     print("Creating new model with configuration:", cfg)
-    new_model = vgg(dataset=args.dataset, cfg=cfg)
+    new_model = vgg(dataset=args.dataset, cfg=cfg, simple_classifier=True) if args.pruning_method=="network_slimming" else vgg(dataset=args.dataset, cfg=cfg)
     if args.cuda:
         new_model.cuda()
 
@@ -163,7 +163,7 @@ def main():
         if args.weights_init_method == 'unpruned':
             new_model = network_slimming_prune.match_model_weights(model, new_model, cfg_mask)
         elif args.weights_init_method == 'random':
-            new_model = network_slimming_prune.match_model_weights(model, new_model, cfg_mask, weight_model=vgg(dataset=args.dataset, depth=args.depth))
+            new_model = network_slimming_prune.match_model_weights(model, new_model, cfg_mask, weight_model=vgg(dataset=args.dataset, depth=args.depth, simple_classifier=True))
         elif args.weights_init_method == 'initial':
             new_model = network_slimming_prune.match_model_weights(model, new_model, cfg_mask, weight_model=load_model(args, args.initial_model))
         else: raise Warning("No valid weight initialisation method is given.")

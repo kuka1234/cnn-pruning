@@ -11,7 +11,7 @@ defaultcfg = {
 }
 
 class vgg(nn.Module):
-    def __init__(self, dataset='cifar10', depth=16, init_weights=True, cfg=None):
+    def __init__(self, dataset='cifar10', depth=16, init_weights=True, cfg=None, simple_classifier=False):
         super(vgg, self).__init__()
         if cfg is None:
             self.cfg = defaultcfg[depth]
@@ -22,13 +22,19 @@ class vgg(nn.Module):
             num_classes = 10
         else:
             print("Invalid dataset - only accepts 'cifar10'")
-    
-        self.classifier = nn.Sequential(
-            nn.Linear(self.cfg[-1], 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(inplace=True),
-            nn.Linear(512, num_classes)
-        )
+
+        if simple_classifier:
+            self.classifier = nn.Linear(self.cfg[-1], num_classes)
+        else:
+            self.classifier = nn.Sequential(
+                nn.Linear(self.cfg[-1], 512),
+                nn.BatchNorm1d(512),
+                nn.ReLU(inplace=True),
+                nn.Linear(512, num_classes)
+            )
+
+        if init_weights:
+            self._initialize_weights()
         
 
     def make_layers(self, cfg, batch_norm=False):

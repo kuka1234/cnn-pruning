@@ -54,7 +54,7 @@ def main():
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',
                         help='input batch size for testing (default: 256)')
-    parser.add_argument('--epochs', type=int, default=160, metavar='N',
+    parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 160)')
     parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
                         help='learning rate (default: 0.1)')
@@ -74,6 +74,8 @@ def main():
                         help='path to save prune model (default: current directory)')
     parser.add_argument('--depth', default=16, type=int,
                         help='depth of the neural network')
+    parser.add_argument('--simple-classifier', action='store_true', default=False,
+                        help='Simple classifier used for network slimming')
 
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -91,10 +93,10 @@ def main():
     if args.fine_tuning:
         checkpoint = torch.load(args.fine_tuning)
         print(checkpoint['cfg'])
-        model = vgg(dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg'])
+        model = vgg(dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg']) if not args.simple_classifier else vgg(dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg'], simple_classifier=True)
         model.load_state_dict(checkpoint['state_dict'])
     else:
-        model = vgg(dataset=args.dataset, depth=args.depth)
+        model = vgg(dataset=args.dataset, depth=args.depth) if not args.simple_classifier else vgg(dataset=args.dataset, depth=args.depth, simple_classifier=True)
 
     if args.cuda:
         model.cuda()
