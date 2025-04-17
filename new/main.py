@@ -90,6 +90,7 @@ def main():
 
     if args.fine_tuning:
         checkpoint = torch.load(args.fine_tuning)
+        print(checkpoint['cfg'])
         model = vgg(dataset=args.dataset, depth=args.depth, cfg=checkpoint['cfg'])
         model.load_state_dict(checkpoint['state_dict'])
     else:

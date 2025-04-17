@@ -14,17 +14,17 @@ class vgg(nn.Module):
     def __init__(self, dataset='cifar10', depth=16, init_weights=True, cfg=None):
         super(vgg, self).__init__()
         if cfg is None:
-            cfg = defaultcfg[depth]
+            self.cfg = defaultcfg[depth]
         else:
             self.cfg = cfg
-        self.feature = self.make_layers(cfg, True)
+        self.feature = self.make_layers(self.cfg, True)
         if dataset == 'cifar10':
             num_classes = 10
         else:
             print("Invalid dataset - only accepts 'cifar10'")
     
         self.classifier = nn.Sequential(
-            nn.Linear(cfg[-1], 512),
+            nn.Linear(self.cfg[-1], 512),
             nn.BatchNorm1d(512),
             nn.ReLU(inplace=True),
             nn.Linear(512, num_classes)
