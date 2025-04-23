@@ -76,6 +76,7 @@ def main():
                         help='depth of the neural network')
     parser.add_argument('--simple-classifier', action='store_true', default=False,
                         help='Simple classifier used for network slimming')
+    parser.add_argument('--info', default='', type=str, help='additional info to add to the run name')
 
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -186,12 +187,12 @@ def main():
             shutil.copyfile(os.path.join(filepath, f'{filename}.pth.tar'), os.path.join(filepath, f'{filename}_best.pth.tar'))
 
     # args.run_name = args.run_name + str(random.getrandbits(16))  # Add random bits to the run name to avoid overwriting
-    args.run_name = args.run_name
+    args.run_name = args.run_name+args.info
     with wandb.init(
         project="network_pruning", 
         name=args.run_name, 
-        config={"epochs": args.epochs, "lr": args.lr, "fine tuning": True if args.fine_tuning != "" else False} + {"sr": args.s} if args.sr else {},
-        tags=["vgg", "pruning"],
+        config={"epochs": args.epochs, "lr": args.lr, "fine tuning": True if args.fine_tuning != "" else False} | {"sr": args.s} if args.sr else {},
+        tags=["vgg", "pruning", args.info],
         mode="offline",
         dir="./wandb_logs"
     ):

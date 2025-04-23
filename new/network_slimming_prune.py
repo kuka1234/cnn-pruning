@@ -48,6 +48,13 @@ def prune_model(model, threshold, total):
     print(f'Pruned ratio: {pruned_ratio:.2f}')
     print('Pre-processing Successful!')
 
+    with open('pruned_ratio.txt', 'a') as f:
+        f.write(f'Pruned ratio: {pruned / total:.2f}\n')
+        f.write('Configuration: \n')
+        for i in cfg:
+            f.write(f'{i} ')
+        f.write('\n')
+
     return cfg, cfg_mask
 
 def prune(model, args):
