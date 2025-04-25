@@ -3,3 +3,4 @@ data.cifar100
 model_weights
 wandb_logs
 new/__pycache__/
+pruned_ratio.txt

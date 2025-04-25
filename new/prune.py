@@ -155,7 +155,7 @@ def main():
         if args.weights_init_method == 'unpruned':
             new_model = l1_norm_prune.match_model_weights(model, new_model, cfg_mask)
         elif args.weights_init_method == 'random':
-            new_model = l1_norm_prune.match_model_weights(model, new_model, cfg_mask, weight_model=vgg(dataset=args.dataset, depth=args.depth))
+            new_model = new_model
         elif args.weights_init_method == 'initial':
             new_model = l1_norm_prune.match_model_weights(model, new_model, cfg_mask, weight_model=load_model(args, args.initial_model))
         else: raise Warning("No valid weight initialisation method is given.")
@@ -163,7 +163,7 @@ def main():
         if args.weights_init_method == 'unpruned':
             new_model = network_slimming_prune.match_model_weights(model, new_model, cfg_mask)
         elif args.weights_init_method == 'random':
-            new_model = network_slimming_prune.match_model_weights(model, new_model, cfg_mask, weight_model=vgg(dataset=args.dataset, depth=args.depth, simple_classifier=True))
+            new_model = new_model
         elif args.weights_init_method == 'initial':
             new_model = network_slimming_prune.match_model_weights(model, new_model, cfg_mask, weight_model=load_model(args, args.initial_model))
         else: raise Warning("No valid weight initialisation method is given.")

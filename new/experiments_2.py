@@ -23,6 +23,7 @@ def run_experiments(pruning_method, percentage):
         f"--model={weights_path}/base_run.pth.tar",
         f"--save={weights_path}",
         f"--percent={percentage}",
+        "--dataset=cifar100"    
     ])
 
     train_model([
@@ -36,10 +37,10 @@ if __name__ == "__main__":
     weights_path = f"./model_weights/network_slimming"
     additional_args = ["--simple-classifier", "-sr", f"--s=0.0001", "--dataset=cifar100"]
 
-    train_model([
-        "base_run", 
-        f"--save={weights_path}"
-    ] + additional_args)
+    # train_model([
+    #     "base_run", 
+    #     f"--save={weights_path}"
+    # ] + additional_args)
 
-    for percentage in [0.50, 0.9, 0.95, 0.99]:
+    for percentage in [0.5, 0.9, 0.95, 0.99]:
         run_experiments("network_slimming", percentage)

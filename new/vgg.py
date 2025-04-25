@@ -43,6 +43,8 @@ class vgg(nn.Module):
         layers = []
         in_channels = 3
         for v in cfg:
+            if v==0:
+                continue
             if v == 'M':
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
             else:
@@ -65,6 +67,8 @@ class vgg(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                if n == 0:
+                    continue
                 m.weight.data.normal_(0, math.sqrt(2. / n))
                 if m.bias is not None:
                     m.bias.data.zero_()
