@@ -1,3 +1,6 @@
 Pruned ratio: 0.10
 Configuration: 
 43 58 M 110 115 M 243 247 245 M 512 512 512 M 512 512 180 
+Pruned ratio: 0.50
+Configuration: 
+26 45 M 79 75 M 144 141 123 M 294 309 312 M 275 282 6 

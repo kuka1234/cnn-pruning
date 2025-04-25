@@ -16,7 +16,7 @@ def prune_model(args):
     ] + args)
 
 
-def run_experiments(pruning_method, percentage, i):
+def run_experiments(pruning_method, percentage):
     prune_model([
         pruning_method, 
         "random", 
@@ -29,18 +29,17 @@ def run_experiments(pruning_method, percentage, i):
         f"fine_tune_{pruning_method}_random",
         f"--save={weights_path}",
         f"--fine_tuning={weights_path}/base_run.pth_pruned_{pruning_method}_random.pth.tar",
-        f"--info={percentage}_{i}"
+        f"--info={percentage}_cifar100",
     ] + additional_args)
 
 if __name__ == "__main__":
     weights_path = f"./model_weights/network_slimming"
-    additional_args = ["--simple-classifier", "-sr", f"--s=0.0001"]
+    additional_args = ["--simple-classifier", "-sr", f"--s=0.0001", "--dataset=cifar100"]
 
-    # train_model([
-    #     "base_run", 
-    #     f"--save={weights_path}"
-    # ] + additional_args)
+    train_model([
+        "base_run", 
+        f"--save={weights_path}"
+    ] + additional_args)
 
-    for percentage in [0.1, 0.25, 0.50, 0.75, 0.95]:
-        for i in range(3):
-            run_experiments("network_slimming", percentage, i)
+    for percentage in [0.50, 0.9, 0.95, 0.99]:
+        run_experiments("network_slimming", percentage)

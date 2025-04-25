@@ -39,6 +39,33 @@ def get_cifar10(train_batch_size, test_batch_size, kwargs):
 
     return train_loader, test_loader
 
+def get_cifar100(train_batch_size, test_batch_size, kwargs):
+    '''
+    :arg train_batch_size : training set batch size
+    :arg test_batch_size : test set batch size
+    :arg kwargs : cuda arguments
+
+    :return train_loader, test_loader : train and test data loader
+    '''
+    train_loader = torch.utils.data.DataLoader(
+        datasets.CIFAR100('./data.cifar100', train=True, download=True,
+                         transform=transforms.Compose([
+                             transforms.Pad(4),
+                             transforms.RandomCrop(32),
+                             transforms.RandomHorizontalFlip(),
+                             transforms.ToTensor(),
+                             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+                         ])),
+        batch_size=train_batch_size, shuffle=True, **kwargs)
+    test_loader = torch.utils.data.DataLoader(
+        datasets.CIFAR100('./data.cifar100', train=False, transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+        ])),
+        batch_size=test_batch_size, shuffle=True, **kwargs)
+
+    return train_loader, test_loader
+
 
 def main():
     # Training Settings
@@ -89,7 +116,12 @@ def main():
         os.makedirs(args.save)
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-    train_loader, test_loader = get_cifar10(args.batch_size, args.test_batch_size, kwargs)
+    if args.dataset == 'cifar10':
+        train_loader, test_loader = get_cifar10(args.batch_size, args.test_batch_size, kwargs)
+    elif args.dataset == 'cifar100':
+        train_loader, test_loader = get_cifar100(args.batch_size, args.test_batch_size, kwargs)
+    else:
+        raise ValueError("Invalid dataset - only accepts 'cifar10' or 'cifar100'")
 
     if args.fine_tuning:
         checkpoint = torch.load(args.fine_tuning)

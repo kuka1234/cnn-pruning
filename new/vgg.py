@@ -20,6 +20,8 @@ class vgg(nn.Module):
         self.feature = self.make_layers(self.cfg, True)
         if dataset == 'cifar10':
             num_classes = 10
+        elif dataset == 'cifar100':
+            num_classes = 100
         else:
             print("Invalid dataset - only accepts 'cifar10'")
 
